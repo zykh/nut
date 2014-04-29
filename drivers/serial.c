@@ -224,6 +224,10 @@ int ser_set_speed(int fd, const char *port, speed_t speed)
 
 static int ser_set_control(int fd, int line, int state)
 {
+	/* netport */
+	if (!isatty(fd))
+		return 0;
+
 	if (state) {
 		return ioctl(fd, TIOCMBIS, &line);
 	} else {
@@ -244,6 +248,10 @@ int ser_set_rts(int fd, int state)
 static int ser_get_control(int fd, int line)
 {
 	int	flags;
+
+	/* netport */
+	if (!isatty(fd))
+		return 0;
 
 	ioctl(fd, TIOCMGET, &flags);
 
@@ -267,6 +275,10 @@ int ser_get_dcd(int fd)
 
 int ser_flush_io(int fd)
 {
+	/* netport */
+	if (!isatty(fd))
+		return 0;
+
 	return tcflush(fd, TCIOFLUSH);
 }
 
