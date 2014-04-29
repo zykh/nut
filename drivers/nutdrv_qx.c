@@ -33,7 +33,7 @@
  *
  */
 
-#define DRIVER_VERSION	"0.06"
+#define DRIVER_VERSION	"0.07"
 
 #include "main.h"
 
@@ -1465,64 +1465,72 @@ void	upsdrv_initups(void)
 
 	#ifndef TESTING
 
-		const struct {
-			const char	*val;
-			const int	dtr;
-			const int	rts;
-		} cablepower[] = {
-			{ "normal",	1, 0 },	/* Default */
-			{ "reverse",	0, 1 },
-			{ "both",	1, 1 },
-			{ "none",	0, 0 },
-			{ NULL }
-		};
-
-		int		i;
-		const char	*val;
-		struct termios	tio;
-
-		/* Open and lock the serial port and set the speed to 2400 baud. */
+		/* Open and lock the port */
 		upsfd = ser_open(device_path);
-		ser_set_speed(upsfd, device_path, B2400);
 
-		if (tcgetattr(upsfd, &tio)) {
-			fatal_with_errno(EXIT_FAILURE, "tcgetattr");
-		}
+		/* Serial/Terminal-related actions */
+		if (isatty(upsfd)) {
 
-		/* Use canonical mode input processing (to read reply line) */
-		tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
+			const struct {
+				const char	*val;
+				const int	dtr;
+				const int	rts;
+			} cablepower[] = {
+				{ "normal",	1, 0 },	/* Default */
+				{ "reverse",	0, 1 },
+				{ "both",	1, 1 },
+				{ "none",	0, 0 },
+				{ NULL }
+			};
 
-		tio.c_cc[VEOF] = _POSIX_VDISABLE;
-		tio.c_cc[VEOL] = '\r';
-		tio.c_cc[VERASE] = _POSIX_VDISABLE;
-		tio.c_cc[VINTR] = _POSIX_VDISABLE;
-		tio.c_cc[VKILL] = _POSIX_VDISABLE;
-		tio.c_cc[VQUIT] = _POSIX_VDISABLE;
-		tio.c_cc[VSUSP] = _POSIX_VDISABLE;
-		tio.c_cc[VSTART] = _POSIX_VDISABLE;
-		tio.c_cc[VSTOP] = _POSIX_VDISABLE;
+			int		i;
+			const char	*val;
+			struct termios	tio;
 
-		if (tcsetattr(upsfd, TCSANOW, &tio)) {
-			fatal_with_errno(EXIT_FAILURE, "tcsetattr");
-		}
+			/* Set the speed to 2400 baud. */
+			ser_set_speed(upsfd, device_path, B2400);
 
-		val = getval("cablepower");
-		for (i = 0; val && cablepower[i].val; i++) {
-
-			if (!strcasecmp(val, cablepower[i].val)) {
-				break;
+			if (tcgetattr(upsfd, &tio)) {
+				fatal_with_errno(EXIT_FAILURE, "tcgetattr");
 			}
+
+			/* Use canonical mode input processing (to read reply line) */
+			tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
+
+			tio.c_cc[VEOF] = _POSIX_VDISABLE;
+			tio.c_cc[VEOL] = '\r';
+			tio.c_cc[VERASE] = _POSIX_VDISABLE;
+			tio.c_cc[VINTR] = _POSIX_VDISABLE;
+			tio.c_cc[VKILL] = _POSIX_VDISABLE;
+			tio.c_cc[VQUIT] = _POSIX_VDISABLE;
+			tio.c_cc[VSUSP] = _POSIX_VDISABLE;
+			tio.c_cc[VSTART] = _POSIX_VDISABLE;
+			tio.c_cc[VSTOP] = _POSIX_VDISABLE;
+
+			if (tcsetattr(upsfd, TCSANOW, &tio)) {
+				fatal_with_errno(EXIT_FAILURE, "tcsetattr");
+			}
+
+			val = getval("cablepower");
+			for (i = 0; val && cablepower[i].val; i++) {
+
+				if (!strcasecmp(val, cablepower[i].val)) {
+					break;
+				}
+
+			}
+
+			if (!cablepower[i].val) {
+				fatalx(EXIT_FAILURE, "Value '%s' not valid for 'cablepower'", val);
+			}
+
+			ser_set_dtr(upsfd, cablepower[i].dtr);
+			ser_set_rts(upsfd, cablepower[i].rts);
+
+			/* Allow some time to settle for the cablepower */
+			usleep(100000);
+
 		}
-
-		if (!cablepower[i].val) {
-			fatalx(EXIT_FAILURE, "Value '%s' not valid for 'cablepower'", val);
-		}
-
-		ser_set_dtr(upsfd, cablepower[i].dtr);
-		ser_set_rts(upsfd, cablepower[i].rts);
-
-		/* Allow some time to settle for the cablepower */
-		usleep(100000);
 
 	#endif	/* TESTING */
 
@@ -1681,7 +1689,9 @@ void	upsdrv_cleanup(void)
 	if (!is_usb) {
 	#endif	/* QX_USB */
 
-		ser_set_dtr(upsfd, 0);
+		if (isatty(upsfd))
+			ser_set_dtr(upsfd, 0);
+
 		ser_close(upsfd, device_path);
 
 	#ifdef QX_USB
