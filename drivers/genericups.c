@@ -24,7 +24,7 @@
 #include "genericups.h"
 
 #define DRIVER_NAME	"Generic contact-closure UPS driver"
-#define DRIVER_VERSION	"1.36"
+#define DRIVER_VERSION	"1.37"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -298,6 +298,9 @@ void upsdrv_initups(void)
 	set_ups_type();
 
 	upsfd = ser_open(device_path);
+
+	if (!isatty(upsfd))
+		fatalx(EXIT_FAILURE, "No way this driver is going to work on something other than a serial port");
 
 	if (tcgetattr(upsfd, &tio)) {
 		fatal_with_errno(EXIT_FAILURE, "tcgetattr");
