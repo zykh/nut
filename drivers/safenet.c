@@ -41,7 +41,7 @@
 #include "safenet.h"
 
 #define DRIVER_NAME	"Generic SafeNet UPS driver"
-#define DRIVER_VERSION	"1.6"
+#define DRIVER_VERSION	"1.61"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -303,7 +303,7 @@ void upsdrv_initinfo(void)
 	 * Very crude hardware detection. If an UPS is attached, it will set DSR
 	 * to 1. Bail out if it isn't.
 	 */
-	if (!ser_get_dsr(upsfd)) {
+	if (isatty(upsfd) && !ser_get_dsr(upsfd)) {
 		fatalx(EXIT_FAILURE, "Serial cable problem or nothing attached to %s", device_path);
 	}
 
@@ -464,43 +464,45 @@ void upsdrv_makevartable(void)
 
 void upsdrv_initups(void)
 {
-	struct termios	tio;
 	const char	*val;
 
-	/*
-	 * Open and lock the serial port and set the speed to 1200 baud.
-	 */
+	/* Open and lock the port */
 	upsfd = ser_open(device_path);
-	ser_set_speed(upsfd, device_path, B1200);
 
-	if (tcgetattr(upsfd, &tio)) {
-		fatal_with_errno(EXIT_FAILURE, "tcgetattr");
+	/* Serial port related actions */
+	if (isatty(upsfd)) {
+
+		struct termios	tio;
+
+		/* Set the speed to 1200 baud */
+		ser_set_speed(upsfd, device_path, B1200);
+
+		if (tcgetattr(upsfd, &tio)) {
+			fatal_with_errno(EXIT_FAILURE, "tcgetattr");
+		}
+
+		/* Use canonical mode input processing (to read reply line) */
+		tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
+
+		tio.c_cc[VEOF] = _POSIX_VDISABLE;
+		tio.c_cc[VEOL] = '\r';
+		tio.c_cc[VERASE] = _POSIX_VDISABLE;
+		tio.c_cc[VINTR] = _POSIX_VDISABLE;
+		tio.c_cc[VKILL] = _POSIX_VDISABLE;
+		tio.c_cc[VQUIT] = _POSIX_VDISABLE;
+		tio.c_cc[VSUSP] = _POSIX_VDISABLE;
+		tio.c_cc[VSTART] = _POSIX_VDISABLE;
+		tio.c_cc[VSTOP] = _POSIX_VDISABLE;
+
+		if (tcsetattr(upsfd, TCSANOW, &tio)) {
+			fatal_with_errno(EXIT_FAILURE, "tcsetattr");
+		}
+
+		/* Set DTR and clear RTS to provide power for the serial interface. */
+		ser_set_dtr(upsfd, 1);
+		ser_set_rts(upsfd, 0);
+
 	}
-
-	/*
-	 * Use canonical mode input processing (to read reply line)
-	 */
-	tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
-
-	tio.c_cc[VEOF] = _POSIX_VDISABLE;
-	tio.c_cc[VEOL] = '\r';
-	tio.c_cc[VERASE] = _POSIX_VDISABLE;
-	tio.c_cc[VINTR]  = _POSIX_VDISABLE;
-	tio.c_cc[VKILL]  = _POSIX_VDISABLE;
-	tio.c_cc[VQUIT]  = _POSIX_VDISABLE;
-	tio.c_cc[VSUSP]  = _POSIX_VDISABLE;
-	tio.c_cc[VSTART] = _POSIX_VDISABLE;
-	tio.c_cc[VSTOP]  = _POSIX_VDISABLE;
-
-	if (tcsetattr(upsfd, TCSANOW, &tio)) {
-		fatal_with_errno(EXIT_FAILURE, "tcsetattr");
-	}
-
-	/*
-	 * Set DTR and clear RTS to provide power for the serial interface.
-	 */
-	ser_set_dtr(upsfd, 1);
-	ser_set_rts(upsfd, 0);
 
 	val = getval("ondelay");
 	if (val) {
