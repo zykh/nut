@@ -45,7 +45,7 @@
 #include "serial.h"
 
 #define DRIVER_NAME	"Best Ferrups/Fortress driver"
-#define DRIVER_VERSION	"0.12"
+#define DRIVER_VERSION	"0.13"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -476,27 +476,33 @@ static void sync_serial(void) {
 /* Begin code stolen from bestups.c */
 static void setup_serial(void)
 {
-	struct termios tio;
-			 
-	if (tcgetattr(upsfd, &tio) == -1)
-		fatal_with_errno(EXIT_FAILURE, "tcgetattr");
-				 
-	tio.c_iflag = IXON | IXOFF;
-	tio.c_oflag = 0;
-	tio.c_cflag = (CS8 | CREAD | HUPCL | CLOCAL);
-	tio.c_lflag = 0;
-	tio.c_cc[VMIN] = 1;
-	tio.c_cc[VTIME] = 0;
+	/* Serial port related actions */
+	if (isatty(upsfd)) {
+
+		struct termios	tio;
+
+		if (tcgetattr(upsfd, &tio) == -1)
+			fatal_with_errno(EXIT_FAILURE, "tcgetattr");
+
+		tio.c_iflag = IXON | IXOFF;
+		tio.c_oflag = 0;
+		tio.c_cflag = (CS8 | CREAD | HUPCL | CLOCAL);
+		tio.c_lflag = 0;
+		tio.c_cc[VMIN] = 1;
+		tio.c_cc[VTIME] = 0;
 
 #ifdef HAVE_CFSETISPEED
-	cfsetispeed(&tio, B1200); /* baud change here */
-	cfsetospeed(&tio, B1200);
+		cfsetispeed(&tio, B1200); /* baud change here */
+		cfsetospeed(&tio, B1200);
 #else
 #error This system lacks cfsetispeed() and has no other means to set the speed
 #endif
 
-	if (tcsetattr(upsfd, TCSANOW, &tio) == -1)
-		fatal_with_errno(EXIT_FAILURE, "tcsetattr");
+		if (tcsetattr(upsfd, TCSANOW, &tio) == -1)
+			fatal_with_errno(EXIT_FAILURE, "tcsetattr");
+
+	}
+
 /* end code stolen from bestups.c */
 
 	sync_serial();
