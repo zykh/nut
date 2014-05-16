@@ -509,7 +509,8 @@ static int apc_read_i(char *buf, size_t buflen, int flags, const char *fn, unsig
 			/* overflow read */
 			if (count == buflen - 1) {
 				ser_comm_fail("serial port read overflow: %u(%s)", ln, fn);
-				tcflush(upsfd, TCIFLUSH);
+				if (isatty(upsfd))
+					tcflush(upsfd, TCIFLUSH);
 				return -1;
 			}
 			/* standard "line received" condition */
@@ -649,12 +650,14 @@ static void apc_flush(int flags)
 	char temp[APC_LBUF];
 
 	if (flags & SER_AA) {
-		tcflush(upsfd, TCOFLUSH);
+		if (isatty(upsfd))
+			tcflush(upsfd, TCOFLUSH);
 		/* TODO */
 		while(apc_read(temp, sizeof(temp), SER_D0|SER_TO|SER_AA) > 0);
 	} else {
-		tcflush(upsfd, TCIOFLUSH);
-		/* tcflush(upsfd, TCIFLUSH); */
+		if (isatty(upsfd))
+			tcflush(upsfd, TCIOFLUSH);
+			/* tcflush(upsfd, TCIFLUSH); */
 		/* while(apc_read(temp, sizeof(temp), SER_D0|SER_TO)); */
 	}
 }
@@ -2025,7 +2028,10 @@ void upsdrv_initups(void)
 	}
 
 	upsfd = extrafd = ser_open(device_path);
-	apc_ser_set();
+
+	/* Serial port related actions */
+	if (isatty(upsfd))
+		apc_ser_set();
 
 	/* fill length values */
 	for (ptr = apc_vartab; ptr->name; ptr++)
