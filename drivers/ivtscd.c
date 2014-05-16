@@ -22,7 +22,7 @@
 #include "serial.h"
 
 #define DRIVER_NAME	"IVT Solar Controller driver"
-#define DRIVER_VERSION	"0.02"
+#define DRIVER_VERSION	"0.03"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -203,43 +203,46 @@ void upsdrv_makevartable(void)
 
 void upsdrv_initups(void)
 {
-	struct termios	tio;
 	const char	*val;
 
 	upsfd = ser_open(device_path);
-	ser_set_speed(upsfd, device_path, B1200);
 
-	if (tcgetattr(upsfd, &tio)) {
-		fatal_with_errno(EXIT_FAILURE, "tcgetattr");
+	/* Serial port related actions */
+	if (isatty(upsfd)) {
+
+		struct termios	tio;
+
+		ser_set_speed(upsfd, device_path, B1200);
+
+		if (tcgetattr(upsfd, &tio)) {
+			fatal_with_errno(EXIT_FAILURE, "tcgetattr");
+		}
+
+		/* Use canonical mode input processing (to read reply line) */
+		tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
+		tio.c_iflag |= IGNCR;	/* Ignore CR */
+		tio.c_iflag |= IGNBRK;	/* Ignore break condition */
+		tio.c_oflag |= ONLCR;	/* Map NL to CR-NL on output */
+
+		tio.c_cc[VEOF] = _POSIX_VDISABLE;
+		tio.c_cc[VEOL] = _POSIX_VDISABLE;
+		tio.c_cc[VERASE] = _POSIX_VDISABLE;
+		tio.c_cc[VINTR] = _POSIX_VDISABLE;
+		tio.c_cc[VKILL] = _POSIX_VDISABLE;
+		tio.c_cc[VQUIT] = _POSIX_VDISABLE;
+		tio.c_cc[VSUSP] = _POSIX_VDISABLE;
+		tio.c_cc[VSTART] = _POSIX_VDISABLE;
+		tio.c_cc[VSTOP] = _POSIX_VDISABLE;
+
+		if (tcsetattr(upsfd, TCSANOW, &tio)) {
+			fatal_with_errno(EXIT_FAILURE, "tcsetattr");
+		}
+
+		/* Set DTR and clear RTS to provide power for the serial interface. */
+		ser_set_dtr(upsfd, 1);
+		ser_set_rts(upsfd, 0);
+
 	}
-
-	/*
-	 * Use canonical mode input processing (to read reply line)
-	 */
-	tio.c_lflag |= ICANON;	/* Canonical input (erase and kill processing) */
-	tio.c_iflag |= IGNCR;	/* Ignore CR */
-	tio.c_iflag |= IGNBRK;	/* Ignore break condition */
-	tio.c_oflag |= ONLCR;	/* Map NL to CR-NL on output */
-
-	tio.c_cc[VEOF] = _POSIX_VDISABLE;
-	tio.c_cc[VEOL] = _POSIX_VDISABLE;
-	tio.c_cc[VERASE] = _POSIX_VDISABLE;
-	tio.c_cc[VINTR]  = _POSIX_VDISABLE;
-	tio.c_cc[VKILL]  = _POSIX_VDISABLE;
-	tio.c_cc[VQUIT]  = _POSIX_VDISABLE;
-	tio.c_cc[VSUSP]  = _POSIX_VDISABLE;
-	tio.c_cc[VSTART] = _POSIX_VDISABLE;
-	tio.c_cc[VSTOP]  = _POSIX_VDISABLE;
-
-	if (tcsetattr(upsfd, TCSANOW, &tio)) {
-		fatal_with_errno(EXIT_FAILURE, "tcsetattr");
-	}
-
-	/*
-	 * Set DTR and clear RTS to provide power for the serial interface.
-	 */
-	ser_set_dtr(upsfd, 1);
-	ser_set_rts(upsfd, 0);
 
 	val = dstate_getinfo("battery.voltage.nominal");
 	battery.voltage.nom = (val) ? strtod(val, NULL) : 12.00;
@@ -254,6 +257,8 @@ void upsdrv_initups(void)
 
 void upsdrv_cleanup(void)
 {
-	ser_set_dtr(upsfd, 0);
+	if (isatty(upsfd))
+		ser_set_dtr(upsfd, 0);
+
 	ser_close(upsfd, device_path);
 }
