@@ -92,9 +92,12 @@
 
 #include "main.h"
 #include "serial.h"
+#include <sys/socket.h>
+#include <netdb.h>
+#include <netinet/in.h>
 
 #define DRIVER_NAME	"Belkin 'Universal UPS' driver"
-#define DRIVER_VERSION	"0.07"
+#define DRIVER_VERSION	"0.08"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -441,17 +444,61 @@ static int belkin_nut_write_int(int reg, int val) {
    and writing via read(2) and write(2). Return a valid file
    descriptor on success, or else -1 with errno set. */
 static int belkin_std_open_tty(const char *device) {
-	int fd;
-	struct termios tios;
-	struct flock flock;
-	char buf[128];
-	int r;
+
+	int		fd, r;
+	struct termios	tios;
+	struct flock	flock;
+	char		buf[128],
+			*path = 0,
+			*p = 0;
 	
-	/* open the device */
-	fd = open(device, O_RDWR | O_NONBLOCK);
+	path = xstrdup(device);
+	p = strchr(path, ':');
+
+	if (p != 0 && p != path) {
+
+		/* open network port */
+
+		int			netport = 0;
+		struct sockaddr_in	saddr;
+		struct hostent		*blob = 0;
+
+		*p++ = 0;
+		netport = atoi(p);
+
+		fd = socket(AF_INET, SOCK_STREAM, 0);
+		if (fd < 0)
+			return -1;
+
+		blob = gethostbyname(path);
+		if (blob == 0)
+			return -1;
+
+		memcpy(&saddr.sin_addr, blob->h_addr, sizeof saddr.sin_addr);
+
+		saddr.sin_port = htons(netport);
+		saddr.sin_family = AF_INET;
+
+		if (connect(fd, (struct sockaddr *)&saddr, sizeof saddr) || fcntl(fd, F_SETFL, O_NONBLOCK)) {
+			close(fd);
+			fd = -1;
+		}
+
+        } else {
+
+		/* open the device */
+
+		fd = open(device, O_RDWR | O_NONBLOCK);
+
+	}
+
 	if (fd == -1) {
 		return -1;
 	}
+
+	/* netport */
+	if (!isatty(fd))
+		return fd;
 	
 	/* set communications parameters: 2400 baud, 8 bits, 1 stop bit, no
 	   parity, enable reading, hang up when done, ignore modem control
