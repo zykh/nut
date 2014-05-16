@@ -25,7 +25,7 @@
 #include "serial.h"
 
 #define DRIVER_NAME	"Liebert MultiLink UPS driver"
-#define DRIVER_VERSION	"1.02"
+#define DRIVER_VERSION	"1.03"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -175,6 +175,9 @@ void upsdrv_help(void)
 void upsdrv_initups(void)
 {
 	upsfd = ser_open(device_path);
+
+	if (!isatty(upsfd))
+		fatalx(EXIT_FAILURE, "No way this driver is going to work on something other than a serial port");
 
 	/* Speed should not matter (see comments in upsdrv_updateinfo),
 	 * but set it relatively low in case there are problems with higher
