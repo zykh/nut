@@ -44,7 +44,7 @@
 #include <math.h>
 
 #define DRIVER_NAME	"UPScode II UPS driver"
-#define DRIVER_VERSION	"0.88"
+#define DRIVER_VERSION	"0.89"
 
 /* driver description structure */
 upsdrv_info_t	upsdrv_info = {
@@ -462,44 +462,67 @@ void upsdrv_help(void)
 
 void upsdrv_initups(void)
 {
-	struct termios tio;
-	int baud = B1200;
 	char *str;
 
-	if ((str = getval("baudrate")) != NULL) {
-		int temp = atoi(str);
-		switch (temp) {
-		case   300:
-			baud =   B300; break;
-		case   600:
-			baud =   B600; break;
-		case  1200:
-			baud =  B1200; break;
-		case  2400:
-			baud =  B2400; break;
-		case  4800:
-			baud =  B4800; break;
-		case  9600:
-			baud =  B9600; break;
-		case 19200:
-			baud = B19200; break;
-		case 38400:
-			baud = B38400; break;
-		default:
-			fatalx(EXIT_FAILURE, "Unrecognized baudrate: %s", str);
-		}
-		upsdebugx(1, "baud_rate = %d", temp);
-	}
 	upsfd = ser_open(device_path);
-	ser_set_speed(upsfd, device_path, baud);
 
-	if (tcgetattr(upsfd, &tio) != 0)
-		fatal_with_errno(EXIT_FAILURE, "tcgetattr(%s)", device_path);
-	tio.c_lflag = ICANON;
-	tio.c_iflag |= IGNCR;	/* Ignore CR */
-	tio.c_cc[VMIN] = 0;
-	tio.c_cc[VTIME] = 0;
-	tcsetattr(upsfd, TCSANOW, &tio);
+	/* Serial port related actions */
+	if (isatty(upsfd)) {
+
+		int		baud = B1200;
+		struct termios  tio;
+
+		if ((str = getval("baudrate")) != NULL) {
+
+			int     temp = atoi(str);
+
+			switch (temp)
+			{
+			case 300:
+				baud = B300;
+				break;
+			case 600:
+				baud = B600;
+				break;
+			case 1200:
+				baud = B1200;
+				break;
+			case 2400:
+				baud = B2400;
+				break;
+			case 4800:
+				baud = B4800;
+				break;
+			case 9600:
+				baud = B9600;
+				break;
+			case 19200:
+				baud = B19200;
+				break;
+			case 38400:
+				baud = B38400;
+				break;
+			default:
+				fatalx(EXIT_FAILURE, "Unrecognized baudrate: %s", str);
+			}
+
+			upsdebugx(1, "baud_rate = %d", temp);
+
+		}
+
+		ser_set_speed(upsfd, device_path, baud);
+
+		if (tcgetattr(upsfd, &tio) != 0)
+			fatal_with_errno(EXIT_FAILURE, "tcgetattr(%s)", device_path);
+
+		tio.c_lflag = ICANON;
+		tio.c_iflag |= IGNCR;	/* Ignore CR */
+		tio.c_cc[VMIN] = 0;
+		tio.c_cc[VTIME] = 0;
+
+		tcsetattr(upsfd, TCSANOW, &tio);
+
+	}
 
 	if ((str = getval("input_timeout")) != NULL) {
 		int temp = atoi(str);
