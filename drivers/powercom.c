@@ -72,7 +72,7 @@
 #include "math.h"
 
 #define DRIVER_NAME		"PowerCom protocol UPS driver"
-#define DRIVER_VERSION	"0.14"
+#define DRIVER_VERSION	"0.15"
 
 /* driver description structure */
 upsdrv_info_t	upsdrv_info = {
@@ -320,6 +320,10 @@ static int instcmd (const char *cmdname, const char *extra)
  */
 static void dtr0rts1 (void)
 {
+	/* netport */
+	if (!isatty(upsfd))
+		return;
+
 	ser_set_dtr(upsfd, 0); 
 	ser_set_rts(upsfd, 1); 
 	upsdebugx(2, "DTR => 0, RTS => 1");
@@ -329,7 +333,11 @@ static void dtr0rts1 (void)
 static void no_flow_control (void)
 {
 	struct termios tio;
-	
+
+	/* netport */
+	if (!isatty(upsfd))
+		return;
+
 	tcgetattr (upsfd, &tio);
 	
 	tio.c_iflag &= ~ (IXON | IXOFF);
