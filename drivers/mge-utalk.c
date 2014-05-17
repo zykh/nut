@@ -64,7 +64,7 @@
 /* --------------------------------------------------------------- */
 
 #define DRIVER_NAME	"MGE UPS SYSTEMS/U-Talk driver"
-#define DRIVER_VERSION	"0.93"
+#define DRIVER_VERSION	"0.94"
 
 
 /* driver description structure */
@@ -162,17 +162,25 @@ void upsdrv_makevartable(void)
 void upsdrv_initups(void)
 {
 	char buf[BUFFLEN];
-	int RTS = TIOCM_RTS;
 	
 	upsfd = ser_open(device_path);
-	ser_set_speed(upsfd, device_path, B2400);
 
-	/* read command line/conf variable that affect comm. */
-	if (testvar ("oldmac"))
-		RTS = ~TIOCM_RTS;
+	/* Serial port related actions */
+	if (isatty(upsfd)) {
+
+		int	RTS = TIOCM_RTS;
+
+		ser_set_speed(upsfd, device_path, B2400);
+
+		/* read command line/conf variable that affect comm. */
+		if (testvar("oldmac"))
+			RTS = ~TIOCM_RTS;
 	
-	/* Init serial line */
-	ioctl(upsfd, TIOCMBIC, &RTS);
+		/* Init serial line */
+		ioctl(upsfd, TIOCMBIC, &RTS);
+
+	}
+
 	enable_ups_comm();
 
 	/* Try to set "Low Battery Level" (if supported and given) */
@@ -879,7 +887,8 @@ static int mge_command(char *reply, int replylen, const char *fmt, ...)
 	usleep(500000);
 	
 	/* flush received, unread data */
-	tcflush(upsfd, TCIFLUSH);
+	if (isatty(upsfd))
+		tcflush(upsfd, TCIFLUSH);
 	
 	/* send command */
 	for (p = command; *p; p++) {
