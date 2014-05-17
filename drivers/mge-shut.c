@@ -37,7 +37,7 @@
 /* --------------------------------------------------------------- */
 
 #define DRIVER_NAME	"Eaton / SHUT driver"
-#define DRIVER_VERSION	"0.70"
+#define DRIVER_VERSION	"0.71"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -633,7 +633,8 @@ int serial_read (int read_timeout, u_char *readbuf)
  **********************************************************************/
 int serial_send (u_char *buf, int len)
 {
-	tcflush (upsfd, TCIFLUSH);
+	if (isatty(upsfd))
+		tcflush (upsfd, TCIFLUSH);
 	upsdebug_hex (3, "sent", (u_char *)buf, len);
 	return write (upsfd, buf, len);
 }
