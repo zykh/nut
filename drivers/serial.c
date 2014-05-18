@@ -141,6 +141,9 @@ int ser_open_nf(const char *port)
 		int netport = 0;
 		struct sockaddr_in saddr;
 		struct hostent *blob = 0;
+
+		upsdebugx(1, "Opening 'network port' %s", path);
+
 		*p++ = 0;
 		netport = atoi(p);
 		fd = socket(AF_INET, SOCK_STREAM, 0);
