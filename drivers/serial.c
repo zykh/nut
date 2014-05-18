@@ -144,11 +144,13 @@ int ser_open_nf(const char *port)
 		*p++ = 0;
 		netport = atoi(p);
 		fd = socket(AF_INET, SOCK_STREAM, 0);
-		if (fd < 0)
-			ser_open_error("socket");
+		if (fd < 0) {
+			upslogx(LOG_ERR, "Unable to create socket");
+			return -1;
+		}
 		blob = gethostbyname(path);
 		if (blob == 0)
-			ser_open_error(path);
+			return -1;
 		memcpy(&saddr.sin_addr,blob->h_addr,sizeof saddr.sin_addr);
 		saddr.sin_port = htons(netport);
 		saddr.sin_family = AF_INET;
