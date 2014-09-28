@@ -5,8 +5,33 @@ _________________________________
 :Author: Russell_Kroll,_Arnaud_Quette,_Charles_Lepple_and_Peter_Selinger
 :Author Initials: RK, AQ, CL & PS
 
+include::settings.txt[]
+
+
 Introduction
 ============
+
+[subs="attributes"]
+----
+1	{pidpath}
+2	{statepath}
+3	{confpath}
+4	{bindir}
+5	{drvpath}
+6	{sbindir}
+7	{port}
+8	{run-as-user}
+9	{run-as-group}
+10	{cgiexecdir}
+11	{devddir}
+12	{driverexecdir}
+13	{htmldir}
+14	{pkgconfigdir}
+15	{systemdsystemunitdir}
+16	{systemdsystemshutdowndir}
+17	{hotplugdir}
+18	{udevdir}
+----
 
 NUT is both a powerful toolkit and framework that provides support for Power
 Devices, such as Uninterruptible Power Supplies, Power Distribution Units

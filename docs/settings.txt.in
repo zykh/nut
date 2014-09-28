@@ -1,0 +1,60 @@
+// Defaults
+:default_pidpath:			bla01
+:default_statepath:			bla02
+:default_confpath:			bla03
+:default_bindir:			bla04
+:default_drvpath:			bla05
+:default_sbindir:			bla06
+:default_port:				bla07
+:default_run-as-user:			bla08
+:default_run-as-group:			bla09
+:default_cgiexecdir:			bla10
+:default_devddir:			bla11
+:default_driverexecdir:			bla12
+:default_htmldir:			bla13
+:default_pkgconfigdir:			bla14
+:default_systemdsystemunitdir:		bla15
+:default_systemdsystemshutdowndir:	bla16
+:default_hotplugdir:			bla17
+:default_udevdir:			bla18
+
+ifndef::use-default-settings[]
+// User-defined settings
+:pidpath:			@PIDPATH@
+:statepath:			@STATEPATH@
+:confpath:			@CONFPATH@
+:bindir:			@BINDIR@
+:drvpath:			@DRVPATH@
+:sbindir:			@SBINDIR@
+:port:				@PORT@
+:run-as-user:			@RUN_AS_USER@
+:run-as-group:			@RUN_AS_GROUP@
+:cgiexecdir:			@cgiexecdir@
+:devddir:			@devddir@
+:driverexecdir:			@driverexecdir@
+:htmldir:			@htmldir@
+:pkgconfigdir:			@pkgconfigdir@
+:systemdsystemunitdir:		@systemdsystemunitdir@
+:systemdsystemshutdowndir:	@systemdsystemshutdowndir@
+:hotplugdir:			@hotplugdir@
+:udevdir:			@udevdir@
+endif::use-default-settings[]
+
+:pidpath:			{eval:"{pidpath=}" or "{default_pidpath=}"}
+:statepath:			{eval:"{statepath=}" or "{default_statepath=}"}
+:confpath:			{eval:"{confpath=}" or "{default_confpath=}"}
+:bindir:			{eval:"{bindir=}" or "{default_bindir=}"}
+:drvpath:			{eval:"{drvpath=}" or "{default_drvpath=}"}
+:sbindir:			{eval:"{sbindir=}" or "{default_sbindir=}"}
+:port:				{eval:"{port=}" or "{default_port=}"}
+:run-as-user:			{eval:"{run-as-user=}" or "{default_run-as-user=}"}
+:run-as-group:			{eval:"{run-as-group=}" or "{default_run-as-group=}"}
+:cgiexecdir:			{eval:"{cgiexecdir=}" or "{default_cgiexecdir=}"}
+:devddir:			{eval:"{devddir=}" or "{default_devddir=}"}
+:driverexecdir:			{eval:"{driverexecdir=}" or "{default_driverexecdir=}"}
+:htmldir:			{eval:"{htmldir=}" or "{default_htmldir=}"}
+:pkgconfigdir:			{eval:"{pkgconfigdir=}" or "{default_pkgconfigdir=}"}
+:systemdsystemunitdir:		{eval:"{systemdsystemunitdir=}" or "{default_systemdsystemunitdir=}"}
+:systemdsystemshutdowndir:	{eval:"{systemdsystemshutdowndir=}" or "{default_systemdsystemshutdowndir=}"}
+:hotplugdir:			{eval:"{hotplugdir=}" or "{default_hotplugdir=}"}
+:udevdir:			{eval:"{udevdir=}" or "{default_udevdir=}"}

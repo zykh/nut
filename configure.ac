@@ -1265,6 +1265,7 @@ AC_OUTPUT([
  data/driver.list
  docs/Makefile
  docs/docinfo.xml
+ docs/settings.txt
  docs/man/Makefile
  drivers/Makefile
  include/Makefile

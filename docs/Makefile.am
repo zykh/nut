@@ -12,7 +12,8 @@ IMAGE_FILES = images/asciidoc.png \
 	images/old-cgi.png
 
 # Only track here the local deps
-SHARED_DEPS = nut-names.txt asciidoc.conf
+DIST_SHARED_DEPS = nut-names.txt asciidoc.conf
+SHARED_DEPS = $(DIST_SHARED_DEPS) settings.txt
 
 USER_MANUAL_DEPS = acknowledgements.txt cables.txt config-notes.txt	\
  configure.txt download.txt documentation.txt features.txt history.txt	\
@@ -39,7 +40,7 @@ ALL_TXT_SRC = nut-names.txt $(USER_MANUAL_DEPS) $(DEVELOPER_GUIDE_DEPS) \
  $(CABLES_DEPS) FAQ.txt nut-qa.txt packager-guide.txt snmp.txt
 
 NUT_SPELL_DICT = nut.dict
-EXTRA_DIST = $(ALL_TXT_SRC) $(SHARED_DEPS) $(IMAGE_FILES) \
+EXTRA_DIST = $(ALL_TXT_SRC) $(DIST_SHARED_DEPS) $(IMAGE_FILES) \
  $(CABLES_IMAGES) $(NUT_SPELL_DICT) \
  common.xsl xhtml.xsl chunked.xsl
 
@@ -98,7 +99,8 @@ A2X_COMMON_OPTS = $(ASCIIDOC_VERBOSE) --attribute icons \
     --attribute=badges \
     --attribute=external_title \
     --attribute tree_version=@TREE_VERSION@ \
-    -a toc -a numbered --destination-dir=.
+    -a toc -a numbered --destination-dir=. \
+    $(ASCIIDOC_PARAMS)
 
 .txt.html: common.xsl xhtml.xsl
 	$(A2X) $(A2X_COMMON_OPTS) --attribute=xhtml11_format --format=xhtml --xsl-file=$(srcdir)/xhtml.xsl $<

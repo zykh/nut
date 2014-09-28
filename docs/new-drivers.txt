@@ -1,6 +1,28 @@
 Creating a new driver to support another device
 ===============================================
 
+[subs="attributes"]
+----
+1	{pidpath}
+2	{statepath}
+3	{confpath}
+4	{bindir}
+5	{drvpath}
+6	{sbindir}
+7	{port}
+8	{run-as-user}
+9	{run-as-group}
+10	{cgiexecdir}
+11	{devddir}
+12	{driverexecdir}
+13	{htmldir}
+14	{pkgconfigdir}
+15	{systemdsystemunitdir}
+16	{systemdsystemshutdowndir}
+17	{hotplugdir}
+18	{udevdir}
+----
+
 This chapter will present the process to create a new driver to support
 another device.
 
