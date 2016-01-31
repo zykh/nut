@@ -136,7 +136,7 @@
 #include "usb-common.h"
 
 #define DRIVER_NAME		"Tripp Lite OMNIVS / SMARTPRO driver"
-#define DRIVER_VERSION	"0.29"
+#define DRIVER_VERSION	"0.30"
 
 /* driver description structure */
 upsdrv_info_t	upsdrv_info = {
@@ -879,7 +879,6 @@ void upsdrv_initinfo(void)
 {
 	const unsigned char proto_msg[] = "\0", f_msg[] = "F", p_msg[] = "P",
 		s_msg[] = "S", u_msg[] = "U", v_msg[] = "V", w_msg[] = "W\0";
-	char *model, *model_end;
 	unsigned char proto_value[9], f_value[9], p_value[9], s_value[9],
 	     u_value[9], v_value[9], w_value[9];
 	int  va, ret;
@@ -939,23 +938,29 @@ void upsdrv_initinfo(void)
 
 	/* - * - * - * - * - * - * - * - * - * - * - * - * - * - * - */
 
-	/* trim "TRIPP LITE" from beginning of model */
-	model = strdup(hd->Product);
-	if(strstr(model, hd->Vendor) == model) {
-		model += strlen(hd->Vendor);
+	if (hd->Product) {
+		char	*product = strdup(hd->Product);
+
+		if (product) {
+			char	*model = product;
+
+			/* Trim vendor name from beginning of model */
+			if (
+				hd->Vendor &&
+				!strncasecmp(model, hd->Vendor, strlen(hd->Vendor))
+			)
+				model += strlen(hd->Vendor);
+
+			/* Trim leading and trailing spaces */
+			str_trim_space(model);
+
+			/* Only publish model if significant */
+			if (*model != '\0')
+				dstate_setinfo("ups.model", "%s", model);
+
+			free(product);
+		}
 	}
-
-	/* trim leading spaces: */
-	for(; *model == ' '; model++);
-
-	/* Trim trailing spaces */
-	for(model_end = model + strlen(model) - 1;
-			model_end > model && *model_end == ' ';
-			model_end--) {
-		*model_end = '\0';
-	}
-
-	dstate_setinfo("ups.model", "%s", model);
 
 	dstate_setinfo("ups.power.nominal", "%d", va);
 
