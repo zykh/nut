@@ -33,7 +33,7 @@
  *
  */
 
-#define DRIVER_VERSION	"0.28"
+#define DRIVER_VERSION	"0.29"
 
 #include "main.h"
 
@@ -858,6 +858,13 @@ static int	fabula_command(const char *cmd, char *buf, size_t buflen)
 	}
 
 	upsdebugx(4, "command index: 0x%02x", index);
+
+	/* Apparently, some devices need to be 'interrupted' in order to report non-zero values and/or to update values between queries... just ignore whatever we may get (we don't expect anything) and any error and don't waste too much time here. */
+	ret = usb_interrupt_read(udev, USB_ENDPOINT_IN | 1, buf, 8, 500);
+	if (ret <= 0)
+		upsdebugx(3, "interrupt_read: %s (%d)", ret ? usb_strerror() : "timeout", ret);
+	else
+		upsdebug_hex(3, "interrupt_read", buf, ret);
 
 	/* Send command/Read reply */
 	ret = usb_get_string_simple(udev, index, buf, buflen);
