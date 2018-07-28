@@ -34,7 +34,7 @@
  *
  */
 
-#define DRIVER_VERSION	"0.36"
+#define DRIVER_VERSION	"0.37"
 
 #include "bool.h"
 #include "main.h"
@@ -560,6 +560,16 @@ static int	sgs_command(const char *cmd, char *buf, size_t buflen)
 
 	}
 
+	/* If the reply lacks the expected terminating CR, add it (if there's enough space) */
+	if (i && memchr(buf, '\r', i) == NULL) {
+		upsdebugx(4, "%s: the reply lacks the expected terminating CR.", __func__);
+		if (i < buflen - 1) {
+			upsdebugx(4, "%s: adding missing terminating CR.", __func__);
+			buf[i++] = '\r';
+			buf[i] = 0;
+		}
+	}
+
 	upsdebugx(3, "read: %.*s", (int)strcspn(buf, "\r"), buf);
 	return i;
 }
@@ -708,6 +718,16 @@ static int	ippon_command(const char *cmd, char *buf, size_t buflen)
 	memset(buf, 0, buflen);
 	memcpy(buf, tmp, len);
 
+	/* If the reply lacks the expected terminating CR, add it (if there's enough space) */
+	if (len && memchr(buf, '\r', len) == NULL) {
+		upsdebugx(4, "%s: the reply lacks the expected terminating CR.", __func__);
+		if (len < buflen - 1) {
+			upsdebugx(4, "%s: adding missing terminating CR.", __func__);
+			buf[len++] = '\r';
+			buf[len] = 0;
+		}
+	}
+
 	return (int)len;
 }
 
@@ -790,6 +810,16 @@ static int	krauler_command(const char *cmd, char *buf, size_t buflen)
 
 				buf[di] = 0;
 				ret = di;
+			}
+
+			/* If the reply lacks the expected terminating CR, add it (if there's enough space) */
+			if (ret && memchr(buf, '\r', ret) == NULL) {
+				upsdebugx(4, "%s: the reply lacks the expected terminating CR.", __func__);
+				if ((size_t)ret < buflen - 1) {
+					upsdebugx(4, "%s: adding missing terminating CR.", __func__);
+					buf[ret++] = '\r';
+					buf[ret] = 0;
+				}
 			}
 
 			/* "UPS No Ack" has a special meaning */
@@ -896,6 +926,16 @@ static int	fabula_command(const char *cmd, char *buf, size_t buflen)
 	if (ret <= 0) {
 		upsdebugx(3, "read: %s (%d)", ret ? libusb_strerror(ret) : "timeout", ret);
 		return ret;
+	}
+
+	/* If the reply lacks the expected terminating CR, add it (if there's enough space) */
+	if (memchr(buf, '\r', ret) == NULL) {
+		upsdebugx(4, "%s: the reply lacks the expected terminating CR.", __func__);
+		if ((size_t)ret < buflen - 1) {
+			upsdebugx(4, "%s: adding missing terminating CR.", __func__);
+			buf[ret++] = '\r';
+			buf[ret] = 0;
+		}
 	}
 
 	upsdebug_hex(5, "read", buf, ret);
