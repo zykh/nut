@@ -1,6 +1,9 @@
-/* metasys.c - driver for Meta System UPS
+/* metasys.c - driver for Meta System and Legrand UPSes
 
-   Copyright (C) 2004  Fabio Di Niro <fabio.diniro@email.it>
+   Copyright (C)
+     2004  Fabio Di Niro <fabio.diniro@email.it>
+     2013  Karol Gabrowski <karol.gabrowski@legrand.com>, for Legrand
+     2018  Gabriele Taormina <gabriele.taormina@legrand.com>, for Legrand
 
    This program is free software; you can redistribute it and/or modify
    it under the terms of the GNU General Public License as published by
@@ -26,19 +29,22 @@
 #include "serial.h"
 
 #define DRIVER_NAME	"Metasystem UPS driver"
-#define DRIVER_VERSION	"0.07"
+#define DRIVER_VERSION	"0.08"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
 	DRIVER_NAME,
 	DRIVER_VERSION,
-	"Fabio Di Niro <fabio.diniro@email.it>",
+	"Fabio Di Niro <fabio.diniro@email.it>" \
+	"Karol Gabrowski <karol.gabrowski@legrand.com>" \
+	"Gabriele Taormina <gabriele.taormina@legrand.com>",
 	DRV_STABLE,
 	{ NULL }
 };
 
 /* Autorestart flag */
 int autorestart = 0;
+/* Nominal Active Power (W) of the UPS */
 int nominal_power = 0;
 
 /* ups commands */
@@ -47,6 +53,7 @@ int nominal_power = 0;
 #define UPS_INPUT_DATA 			0x02
 #define UPS_STATUS 			0x03
 #define UPS_BATTERY_DATA 		0x04
+#define UPS_BATTERY_SOC_DATA	        0x25
 #define UPS_HISTORY_DATA		0x05
 #define UPS_GET_SCHEDULING		0x06
 #define UPS_EVENT_LIST			0x07
@@ -57,6 +64,11 @@ int nominal_power = 0;
 #define UPS_SET_TIMES_ON_BATTERY	0x0c
 #define UPS_SET_BUZZER_MUTE		0x0d
 #define UPS_SET_BATTERY_TEST		0x0e
+
+/* Protocol costants */
+#define OVERRANGE_VALUE			0xFFFF		/* decimal -1 */
+#define NOT_AVAILABLE_VALUE		0xFFFE		/* decimal -2 */
+#define NO_SHUTDOWN_RESTART		0xFFFFFFFF	/* decimal -1 */
 
 static int instcmd(const char *cmdname, const char *extra);
 
@@ -72,9 +84,9 @@ static int instcmd(const char *cmdname, const char *extra);
 	The answer from the UPS have the same packet format and the first
 	data byte is equal to the command that the ups is answering to
 */
-int get_word(unsigned char *buffer) {		/* return an integer reading a word in the supplied buffer */
+unsigned int get_word(unsigned char *buffer) {		/* return an integer reading a word in the supplied buffer */
 	unsigned char a, b;
-	int result;
+	unsigned int result;
 	
 	a = buffer[0];
 	b = buffer[1];
@@ -83,9 +95,9 @@ int get_word(unsigned char *buffer) {		/* return an integer reading a word in th
 }
 
 
-long int get_long(unsigned char *buffer) {	/* return a long integer reading 4 bytes in the supplied buffer */
+unsigned long int get_long(unsigned char *buffer) {	/* return a long integer reading 4 bytes in the supplied buffer */
 	unsigned char a, b, c, d;
-	long int result;
+	unsigned long int result;
 	a=buffer[0];
 	b=buffer[1];
 	c=buffer[2];
@@ -284,6 +296,10 @@ void upsdrv_initinfo(void)
 #endif
 	 dstate_setinfo("battery.voltage", "%d", -1);
 	dstate_setflags("battery.voltage", ST_FLAG_RW);
+	 dstate_setinfo("battery.charge", "%d", 50);
+	dstate_setflags("battery.charge", ST_FLAG_RW);
+	 dstate_setinfo("battery.runtime", "%d", 10);
+	dstate_setflags("battery.runtime", ST_FLAG_RW);
 #ifdef EXTRADATA
 	 dstate_setinfo("battery.voltage.low", "%2.2f", -1);
 	dstate_setflags("battery.voltage.low", ST_FLAG_RW);
@@ -321,7 +337,7 @@ void upsdrv_initinfo(void)
 	if (res < 0) fatal_with_errno(EXIT_FAILURE, "Could not communicate with the ups");
 	/* the manufacturer is hard coded into the driver, the model type is in the second 
 		byte of the answer, the third byte identifies the model version */
-	dstate_setinfo("ups.mfr", "Meta System");
+	dstate_setinfo("ups.mfr", "Meta System / Legrand");
 	i = my_answer[1] * 10 + my_answer[2];
 	switch (i) {	
 		case 11:
@@ -532,6 +548,50 @@ void upsdrv_initinfo(void)
 			dstate_setinfo("ups.model", "%s", "Megaline 10000 / 2");
 			nominal_power = 7000;
 			break;
+		case 171:
+			dstate_setinfo("ups.model", "%s", "WHAD 800");
+			nominal_power = 560;
+			break;
+		case 181:
+			dstate_setinfo("ups.model", "%s", "WHAD 1000");
+			nominal_power = 700;
+			break;
+		case 191:
+			dstate_setinfo("ups.model", "%s", "WHAD 1500");
+			nominal_power = 1050;
+			break;
+		case 201:
+			dstate_setinfo("ups.model", "%s", "DHEA 1000");
+			nominal_power = 700;
+			break;
+		case 211:
+			dstate_setinfo("ups.model", "%s", "DHEA 1500");
+			nominal_power = 1050;
+			break;
+		case 272:
+			dstate_setinfo("ups.model", "%s", "WHAD 2000");
+			nominal_power = 1400;
+			break;
+		case 281:
+			dstate_setinfo("ups.model", "%s", "WHAD / WHAD CAB 1250");
+			nominal_power = 875;
+			break;
+		case 282:
+			dstate_setinfo("ups.model", "%s", "WHAD / WHAD CAB 2500");
+			nominal_power = 1750;
+			break;
+		case 311:
+			dstate_setinfo("ups.model", "%s", "WHAD HE 800");
+			nominal_power = 800;
+			break;
+		case 321:
+			dstate_setinfo("ups.model", "%s", "WHAD HE 1000");
+			nominal_power = 1000;
+			break;
+		case 331:
+			dstate_setinfo("ups.model", "%s", "WHAD HE 1500");
+			nominal_power = 1500;
+			break;
 
 		default:
 			fatal_with_errno(EXIT_FAILURE, "Unknown UPS");
@@ -542,6 +602,10 @@ void upsdrv_initinfo(void)
 	memcpy(serial, my_answer + 7, res - 7);
 	/* serial number start from the 8th byte */
 	serial[12]=0;		/* terminate string */
+	for (i = 0; i < 12; i++) {
+		if (serial[i] == 0)
+			serial[i] = '0';
+	}
 	dstate_setinfo("ups.serial", "%s", serial);
 	
 	/* get the ups firmware. The major number is in the 5th byte, the minor is in the 6th */
@@ -566,12 +630,13 @@ void upsdrv_initinfo(void)
 
 void upsdrv_updateinfo(void)
 {
-	int res, int_num;
+	int res;
+	unsigned int int_num;
 #ifdef EXTRADATA
 	int day, hour, minute;
 #endif
 	float float_num;
-	long int long_num;
+	unsigned long int long_num;
 	unsigned char my_answer[255];
 	
 	/* GET Output data */
@@ -589,27 +654,35 @@ void upsdrv_updateinfo(void)
 			dstate_setinfo("ups.load", "%s", "not available");
 		}	
 #ifdef EXTRADATA
-		dstate_setinfo("output.power", "%d", int_num);
+		dstate_setinfo("output.power", "%u", int_num);
 #endif
 		/* voltage */
 		int_num = get_word(&my_answer[3]);
-		if (int_num > 0) dstate_setinfo("output.voltage", "%d", int_num);
-		if (int_num == -1) dstate_setinfo("output.voltage", "%s", "overrange");
-		if (int_num == -2) dstate_setinfo("output.voltage", "%s", "not available");
+		if (int_num == OVERRANGE_VALUE) {
+			dstate_setinfo("output.voltage", "%s", "overrange");
+		} else if (int_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("output.voltage", "%s", "not available");
+		} else {
+			dstate_setinfo("output.voltage", "%u", int_num);
+		}
 		/* current */
 		float_num = get_word(&my_answer[5]);
-		if (float_num == -1) dstate_setinfo("output.current", "%s", "overrange");
-		if (float_num == -2) dstate_setinfo("output.current", "%s", "not available");
-		if (float_num > 0) {
+		if (float_num == OVERRANGE_VALUE) {
+			dstate_setinfo("output.current", "%s", "overrange");
+		} else if (float_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("output.current", "%s", "not available");
+		} else {
 			float_num = (float)(float_num/10);
 			dstate_setinfo("output.current", "%2.2f", float_num);
 		}
 #ifdef EXTRADATA
 		/* peak current */
 		float_num = get_word(&my_answer[7]);
-		if (float_num == -1) dstate_setinfo("output.current.peak", "%s", "overrange");
-		if (float_num == -2) dstate_setinfo("output.current.peak", "%s", "not available");
-		if (float_num > 0) {
+		if (float_num == OVERRANGE_VALUE) {
+			dstate_setinfo("output.current.peak", "%s", "overrange");
+		} else if (float_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("output.current.peak", "%s", "not available");
+		} else {
 			float_num = (float)(float_num/10);
 			dstate_setinfo("output.current.peak", "%2.2f", float_num);
 		}
@@ -626,35 +699,58 @@ void upsdrv_updateinfo(void)
 #ifdef EXTRADATA
 		/* Active power */
 		int_num = get_word(&my_answer[1]);
-		if (int_num > 0) dstate_setinfo("input.power", "%d", int_num);
-		if (int_num == -1) dstate_setinfo("input.power", "%s", "overrange");
-		if (int_num == -2) dstate_setinfo("input.power", "%s", "not available");
+		if (int_num == OVERRANGE_VALUE) {
+			dstate_setinfo("input.power", "%s", "overrange");
+		} else if (int_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("input.power", "%s", "not available");
+		} else {
+			dstate_setinfo("input.power", "%u", int_num);
+		}
 #endif
 		/* voltage */
 		int_num = get_word(&my_answer[3]);
-		if (int_num > 0) dstate_setinfo("input.voltage", "%d", int_num);
-		if (int_num == -1) dstate_setinfo("input.voltage", "%s", "overrange");
-		if (int_num == -2) dstate_setinfo("input.voltage", "%s", "not available");
+		if (int_num == OVERRANGE_VALUE) {
+			dstate_setinfo("input.voltage", "%s", "overrange");
+		} else if (int_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("input.voltage", "%s", "not available");
+		} else {
+			dstate_setinfo("input.voltage", "%u", int_num);
+		}
 #ifdef EXTRADATA
 		/* current */
 		float_num = get_word(&my_answer[5]);
-		if (float_num == -1) dstate_setinfo("input.current", "%s", "overrange");
-		if (float_num == -2) dstate_setinfo("input.current", "%s", "not available");
-		if (float_num > 0) {
+		if (float_num == OVERRANGE_VALUE) {
+			dstate_setinfo("input.current", "%s", "overrange");
+		} else if (float_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("input.current", "%s", "not available");
+		} else {
 			float_num = (float)(float_num/10);
 			dstate_setinfo("input.current", "%2.2f", float_num);
 		}
 		/* peak current */
 		float_num = get_word(&my_answer[7]);
-		if (float_num == -1) dstate_setinfo("input.current.peak", "%s", "overrange");
-		if (float_num == -2) dstate_setinfo("input.current.peak", "%s", "not available");
-		if (float_num > 0) {
+		if (float_num == OVERRANGE_VALUE) {
+			dstate_setinfo("input.current.peak", "%s", "overrange");
+		} else if (float_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("input.current.peak", "%s", "not available");
+		} else if (float_num > 0) {
 			float_num = (float)(float_num/10);
 			dstate_setinfo("input.current.peak", "%2.2f", float_num);
 		}
 #endif
 	}
 	
+	/* GET Battery SOC data */
+	res = command_read_sequence(UPS_BATTERY_SOC_DATA, my_answer);
+	if (res < 0) {
+		printf("Could not communicate with the UPS");
+		dstate_datastale();
+	} else {
+		int_num = get_word(&my_answer[2]);
+		dstate_setinfo("battery.runtime", "%u", int_num);
+		int_num = my_answer[4];
+		dstate_setinfo("battery.charge", "%u", int_num);
+	}
 	
 	/* GET Battery data */
 	res = command_read_sequence(UPS_BATTERY_DATA, my_answer);
@@ -693,7 +789,7 @@ void upsdrv_updateinfo(void)
 		long_num -= (long)(hour*3600);
 		minute = (int)(long_num / 60);
 		long_num -= (minute*60);
-		dstate_setinfo("ups.total.runtime", "%d days %dh %dm %lds", day, hour, minute, long_num);
+		dstate_setinfo("ups.total.runtime", "%d days %dh %dm %lus", day, hour, minute, long_num);
 		
 		/* ups inverter runtime */
 		long_num = get_long(&my_answer[5]);
@@ -703,19 +799,25 @@ void upsdrv_updateinfo(void)
 		long_num -= (long)(hour*3600);
 		minute = (int)(long_num / 60);
 		long_num -= (minute*60);
-		dstate_setinfo("ups.inverter.runtime", "%d days %dh %dm %lds", day, hour, minute, long_num);
+		dstate_setinfo("ups.inverter.runtime", "%d days %dh %dm %lus", day, hour, minute, long_num);
 		/* ups inverter interventions */
-		dstate_setinfo("ups.inverter.interventions", "%d", get_word(&my_answer[9]));
+		dstate_setinfo("ups.inverter.interventions", "%u", get_word(&my_answer[9]));
 		/* battery full discharges */
-		dstate_setinfo("battery.full.discharges", "%d", get_word(&my_answer[11]));
+		dstate_setinfo("battery.full.discharges", "%u", get_word(&my_answer[11]));
 		/* ups bypass / stabilizer interventions */
 		int_num = get_word(&my_answer[13]);
-		if (int_num == -2) dstate_setinfo("ups.bypass.interventions", "%s", "not avaliable");
-		if (int_num >= 0) dstate_setinfo("ups.bypass.interventions", "%d", int_num);
+		if (int_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("ups.bypass.interventions", "%s", "not avaliable");
+		} else {
+			dstate_setinfo("ups.bypass.interventions", "%u", int_num);
+		}
 		/* ups overheatings */
 		int_num = get_word(&my_answer[15]);
-		if (int_num == -2) dstate_setinfo("ups.overheatings", "%s", "not avalilable");
-		if (int_num >= 0) dstate_setinfo("ups.overheatings", "%d", int_num);
+		if (int_num == NOT_AVAILABLE_VALUE) {
+			dstate_setinfo("ups.overheatings", "%s", "not avalilable");
+		} else {
+			dstate_setinfo("ups.overheatings", "%u", int_num);
+		}
 	}
 #endif
 	
@@ -737,17 +839,17 @@ void upsdrv_updateinfo(void)
 	} else {
 		/* time remaining to shutdown */
 		long_num = get_long(&my_answer[1]);
-		if (long_num == -1) {
+		if (long_num == NO_SHUTDOWN_RESTART) {
 			dstate_setinfo("ups.delay.shutdown", "%d", 120);	
 		} else {
-			dstate_setinfo("ups.delay.shutdown", "%ld", long_num);
+			dstate_setinfo("ups.delay.shutdown", "%lu", long_num);
 		}
 		/* time remaining to restart  */
 		long_num = get_long(&my_answer[5]);
-		if (long_num == -1) {
+		if (long_num == NO_SHUTDOWN_RESTART) {
 			dstate_setinfo("ups.delay.start", "%d", 0);	
 		} else {
-			dstate_setinfo("ups.delay.start", "%ld", long_num);
+			dstate_setinfo("ups.delay.start", "%lu", long_num);
 		}	
 	}
 	
@@ -779,7 +881,7 @@ void upsdrv_updateinfo(void)
 				break;
 			case 0x03:			/* bypass engaged */
 			case 0x04:			/* manual bypass engaged */
-				status_set("BY");
+				status_set("BYPASS");
 				break;
 			default:
 				printf("status unknown \n");
