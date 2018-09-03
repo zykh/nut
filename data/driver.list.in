@@ -515,8 +515,8 @@
 
 "Legrand"	"ups"	"2"	"Keor SPX"	"USB"	"nutdrv_qx" 
 "Legrand"	"ups"	"2"	"Keor Multiplug"	"USB"	"nutdrv_qx"
-"Legrand"	"ups"	"2"	"Daker DK / DK+"	"Serial"	"nutdrv_qx"        
-"Legrand"	"ups"	"2"	"Daker DK / DK+"	"USB"	"nutdrv_qx"         
+"Legrand"	"ups"	"2"	"Daker DK / DK Plus"	"Serial"	"nutdrv_qx"        
+"Legrand"	"ups"	"2"	"Daker DK / DK Plus"	"USB"	"nutdrv_qx"         
 "Legrand"	"ups"	"2"	"Niky / Niky S"	"Serial"	"nutdrv_qx"       
 "Legrand"	"ups"	"2"	"Niky / Niky S"	"USB"	"nutdrv_qx"        
 "Legrand"	"ups"	"2"	"Keor LP/S/Line RT"	"Serial"	"nutdrv_qx"
