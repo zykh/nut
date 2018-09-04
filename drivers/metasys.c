@@ -28,8 +28,8 @@
 #include "main.h"
 #include "serial.h"
 
-#define DRIVER_NAME	"Metasystem UPS driver"
-#define DRIVER_VERSION	"0.08"
+#define DRIVER_NAME	"Legrand / Metasystem UPS driver"
+#define DRIVER_VERSION	"0.09"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -46,6 +46,9 @@ upsdrv_info_t upsdrv_info = {
 int autorestart = 0;
 /* Nominal Active Power (W) of the UPS */
 int nominal_power = 0;
+
+/* Battery SOC Data discrimation variable */
+int batt_soc = 0;
 
 /* ups commands */
 #define UPS_INFO 			0x00
@@ -274,62 +277,43 @@ void upsdrv_initinfo(void)
 	/* Initial setup of variables */
 #ifdef EXTRADATA
 	 dstate_setinfo("output.power", "%d", -1);
-	dstate_setflags("output.power", ST_FLAG_RW);
 #endif
 	 dstate_setinfo("output.voltage", "%d", -1);
-	dstate_setflags("output.voltage", ST_FLAG_RW);
 	 dstate_setinfo("output.current", "%d", -1);
-	dstate_setflags("output.current", ST_FLAG_RW);
 #ifdef EXTRADATA
 	 dstate_setinfo("output.current.peak", "%2.2f", -1);	
-	dstate_setflags("output.current.peak", ST_FLAG_RW);
 	 dstate_setinfo("input.power", "%d", -1);
-	dstate_setflags("input.power", ST_FLAG_RW);
 #endif
 	 dstate_setinfo("input.voltage", "%d", -1);
-	dstate_setflags("input.voltage", ST_FLAG_RW);
 #ifdef EXTRADATA
 	 dstate_setinfo("input.current", "%2.2f", -1);
-	dstate_setflags("input.current", ST_FLAG_RW);
 	 dstate_setinfo("input.current.peak", "%2.2f", -1);	
-	dstate_setflags("input.current.peak", ST_FLAG_RW);
 #endif
 	 dstate_setinfo("battery.voltage", "%d", -1);
-	dstate_setflags("battery.voltage", ST_FLAG_RW);
 	 dstate_setinfo("battery.charge", "%d", 50);
-	dstate_setflags("battery.charge", ST_FLAG_RW);
 	 dstate_setinfo("battery.runtime", "%d", 10);
-	dstate_setflags("battery.runtime", ST_FLAG_RW);
 #ifdef EXTRADATA
 	 dstate_setinfo("battery.voltage.low", "%2.2f", -1);
-	dstate_setflags("battery.voltage.low", ST_FLAG_RW);
 	 dstate_setinfo("battery.voltage.exhaust", "%2.2f", -1);
-	dstate_setflags("battery.voltage.exhaust", ST_FLAG_RW);
 	 dstate_setinfo("ups.total.runtime", "retrieving...");
-	dstate_setflags("ups.total.runtime", ST_FLAG_STRING | ST_FLAG_RW);
+	dstate_setflags("ups.total.runtime", ST_FLAG_STRING);
 	  dstate_setaux("ups.total.runtime", 20);
 	 dstate_setinfo("ups.inverter.runtime", "retrieving...");
-	dstate_setflags("ups.inverter.runtime", ST_FLAG_STRING | ST_FLAG_RW);
+	dstate_setflags("ups.inverter.runtime", ST_FLAG_STRING);
 	  dstate_setaux("ups.inverter.runtime", 20);
 	 dstate_setinfo("ups.inverter.interventions", "%d", -1);
-	dstate_setflags("ups.inverter.interventions", ST_FLAG_RW);
 	 dstate_setinfo("battery.full.discharges", "%d", -1);
-	dstate_setflags("battery.full.discharges", ST_FLAG_RW);
 	 dstate_setinfo("ups.bypass.interventions", "%d", -1);
-	dstate_setflags("ups.bypass.interventions", ST_FLAG_RW);
 	 dstate_setinfo("ups.overheatings", "%d", -1);
-	dstate_setflags("ups.overheatings", ST_FLAG_RW);
 #endif
 	 dstate_setinfo("ups.load", "%d", -1);
-	dstate_setflags("ups.load", ST_FLAG_RW);
 	 dstate_setinfo("ups.delay.shutdown", "%d", -1);
 	dstate_setflags("ups.delay.shutdown", ST_FLAG_RW);
 	 dstate_setinfo("ups.delay.start", "%d", -1);
 	dstate_setflags("ups.delay.start", ST_FLAG_RW);
 	 dstate_setinfo("ups.temperature", "%d", -1);
-	dstate_setflags("ups.temperature", ST_FLAG_RW);
 	 dstate_setinfo("ups.test.result", "not yet done...");
-	dstate_setflags("ups.test.result", ST_FLAG_STRING | ST_FLAG_RW);
+	dstate_setflags("ups.test.result", ST_FLAG_STRING);
 	  dstate_setaux("ups.test.result", 20);
 	
 	/* UPS INFO READ */
@@ -515,82 +499,102 @@ void upsdrv_initinfo(void)
 		case 141:
 			dstate_setinfo("ups.model", "%s", "Megaline 1250");
 			nominal_power = 875;
+			batt_soc = 1;
 			break;
 		case 142:
 			dstate_setinfo("ups.model", "%s", "Megaline 2500");
 			nominal_power = 1750;
+			batt_soc = 1;
 			break;
 		case 143:
 			dstate_setinfo("ups.model", "%s", "Megaline 3750");
 			nominal_power = 2625;
+			batt_soc = 1;
 			break;
 		case 144:
 			dstate_setinfo("ups.model", "%s", "Megaline 5000");
 			nominal_power = 3500;
+			batt_soc = 1;
 			break;
 		case 154:
 			dstate_setinfo("ups.model", "%s", "Megaline 5000 / 2");
 			nominal_power = 3500;
+			batt_soc = 1;
 			break;
 		case 155:
 			dstate_setinfo("ups.model", "%s", "Megaline 6250 / 2");
 			nominal_power = 4375;
+			batt_soc = 1;
 			break;
 		case 156:
 			dstate_setinfo("ups.model", "%s", "Megaline 7500 / 2");
 			nominal_power = 5250;
+			batt_soc = 1;
 			break;
 		case 157:
 			dstate_setinfo("ups.model", "%s", "Megaline 8750 / 2");
 			nominal_power = 6125;
+			batt_soc = 1;
 			break;
 		case 158:
 			dstate_setinfo("ups.model", "%s", "Megaline 10000 / 2");
 			nominal_power = 7000;
+			batt_soc = 1;
 			break;
 		case 171:
 			dstate_setinfo("ups.model", "%s", "WHAD 800");
 			nominal_power = 560;
+			batt_soc = 1;
 			break;
 		case 181:
 			dstate_setinfo("ups.model", "%s", "WHAD 1000");
 			nominal_power = 700;
+			batt_soc = 1;
 			break;
 		case 191:
 			dstate_setinfo("ups.model", "%s", "WHAD 1500");
 			nominal_power = 1050;
+			batt_soc = 1;
 			break;
 		case 201:
 			dstate_setinfo("ups.model", "%s", "DHEA 1000");
 			nominal_power = 700;
+			batt_soc = 1;
 			break;
 		case 211:
 			dstate_setinfo("ups.model", "%s", "DHEA 1500");
 			nominal_power = 1050;
+			batt_soc = 1;
 			break;
 		case 272:
 			dstate_setinfo("ups.model", "%s", "WHAD 2000");
 			nominal_power = 1400;
+			batt_soc = 1;
 			break;
 		case 281:
 			dstate_setinfo("ups.model", "%s", "WHAD / WHAD CAB 1250");
 			nominal_power = 875;
+			batt_soc = 1;
 			break;
 		case 282:
 			dstate_setinfo("ups.model", "%s", "WHAD / WHAD CAB 2500");
 			nominal_power = 1750;
+			batt_soc = 1;
 			break;
 		case 311:
 			dstate_setinfo("ups.model", "%s", "WHAD HE 800");
 			nominal_power = 800;
+			batt_soc = 1;
 			break;
 		case 321:
 			dstate_setinfo("ups.model", "%s", "WHAD HE 1000");
 			nominal_power = 1000;
+			batt_soc = 1;
 			break;
 		case 331:
 			dstate_setinfo("ups.model", "%s", "WHAD HE 1500");
 			nominal_power = 1500;
+			batt_soc = 1;
 			break;
 
 		default:
@@ -741,17 +745,18 @@ void upsdrv_updateinfo(void)
 	}
 	
 	/* GET Battery SOC data */
-	res = command_read_sequence(UPS_BATTERY_SOC_DATA, my_answer);
-	if (res < 0) {
-		printf("Could not communicate with the UPS");
-		dstate_datastale();
-	} else {
-		int_num = get_word(&my_answer[2]);
-		dstate_setinfo("battery.runtime", "%u", int_num);
-		int_num = my_answer[4];
-		dstate_setinfo("battery.charge", "%u", int_num);
-	}
-	
+    if (batt_soc == 1){
+		res = command_read_sequence(UPS_BATTERY_SOC_DATA, my_answer);
+	    if (res < 0) {
+		  printf("Could not communicate with the UPS");
+		  dstate_datastale();
+	    }else {
+		  int_num = get_word(&my_answer[2]);
+		  dstate_setinfo("battery.runtime", "%u", int_num);
+		  int_num = my_answer[4];
+		  dstate_setinfo("battery.charge", "%u", int_num);
+	    }
+    }
 	/* GET Battery data */
 	res = command_read_sequence(UPS_BATTERY_DATA, my_answer);
 	if (res < 0) {
@@ -1149,3 +1154,4 @@ void upsdrv_cleanup(void)
 {
 	ser_close(upsfd, device_path); 
 }
+
