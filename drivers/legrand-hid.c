@@ -31,8 +31,8 @@
 
 /* Legrand VendorID and ProductID */
 #define LEGRAND_VID	0x1cb0	/* Legrand */
-#define LEGRAND_PID_PDU	0x0038	/* Keor PDU model */
-#define LEGRAND_PID_SP	0x0032	/* Keor SP model */
+#define LEGRAND_PID_PDU	0x0038	/* Keor PDU model (800VA) */
+#define LEGRAND_PID_SP	0x0032	/* Keor SP model (600, 800, 1000, 1500, 2000VA version) */
 
 static void *disable_interrupt_pipe(USBDevice_t *device)
 {
@@ -119,22 +119,22 @@ static hid_info_t legrand_hid2nut[] = {
 	/* Input Data */
 	{ "input.voltage", 0, 0, "UPS.Input.Voltage", NULL, "%.0f", 0, legrand_times10_info },
 	{ "input.voltage", 0, 0, "UPS.PowerConverter.Input.Voltage", NULL, "%.0f", 0, legrand_times1M_info },
-	{ "input.transfer.high", 0, 0, "UPS.Input.HighVoltageTransfer", NULL, "%.0f", 0, NULL },
-	{ "input.transfer.high", 0, 0, "UPS.PowerConverter.Output.HighVoltageTransfer", NULL, "%.0f", 0, legrand_times10_info },
-	{ "input.transfer.low", 0, 0, "UPS.Input.LowVoltageTransfer", NULL, "%.0f", 0, NULL },
-	{ "input.transfer.low", 0, 0, "UPS.PowerConverter.Output.LowVoltageTransfer", NULL, "%.0f", 0, NULL },
-	{ "input.voltage.nominal", 0, 0, "UPS.Input.ConfigVoltage", NULL, "%.0f", 0, NULL },
-	{ "input.voltage.nominal", 0, 0, "UPS.Flow.ConfigVoltage", NULL, "%.0f", 0, NULL },
+	{ "input.transfer.high", 0, 0, "UPS.Input.HighVoltageTransfer", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "input.transfer.high", 0, 0, "UPS.PowerConverter.Output.HighVoltageTransfer", NULL, "%.0f", HU_FLAG_STATIC, legrand_times10_info },
+	{ "input.transfer.low", 0, 0, "UPS.Input.LowVoltageTransfer", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "input.transfer.low", 0, 0, "UPS.PowerConverter.Output.LowVoltageTransfer", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "input.voltage.nominal", 0, 0, "UPS.Input.ConfigVoltage", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "input.voltage.nominal", 0, 0, "UPS.Flow.ConfigVoltage", NULL, "%.0f", HU_FLAG_STATIC, NULL },
 
 	/* Battery Data */
-	{ "battery.voltage.nominal", 0, 0, "UPS.PowerSummary.ConfigVoltage", NULL, "%.0f", 0, divide_by_10_conversion },
-	{ "battery.voltage.nominal", 0, 0, "UPS.BatterySystem.Battery.ConfigVoltage", NULL, "%.0f", 0, NULL },
+	{ "battery.voltage.nominal", 0, 0, "UPS.PowerSummary.ConfigVoltage", NULL, "%.0f", HU_FLAG_STATIC, divide_by_10_conversion },
+	{ "battery.voltage.nominal", 0, 0, "UPS.BatterySystem.Battery.ConfigVoltage", NULL, "%.0f", HU_FLAG_STATIC, NULL },
 	{ "battery.voltage", 0, 0, "UPS.PowerSummary.Voltage", NULL, "%.0f", 0, divide_by_10_conversion },
 	{ "battery.voltage", 0, 0, "UPS.BatterySystem.Battery.Voltage", NULL, "%.0f", 0, legrand_times100k_info },
 	{ "battery.charge", 0, 0, "UPS.PowerSummary.RemainingCapacity", NULL, "%.0f", 0, NULL },
 	{ "battery.runtime", 0, 0, "UPS.PowerSummary.RuntimeToEmpty", NULL, "%.0f", 0, NULL },
-	{ "battery.charge.warning", 0, 0, "UPS.PowerSummary.WarningCapacityLimit", NULL, "%.0f", 0, NULL },
-	{ "battery.charge.low", 0, 0, "UPS.PowerSummary.RemainingCapacityLimit", NULL, "%.0f", 0, NULL },
+	{ "battery.charge.warning", 0, 0, "UPS.PowerSummary.WarningCapacityLimit", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "battery.charge.low", 0, 0, "UPS.PowerSummary.RemainingCapacityLimit", NULL, "%.0f", HU_FLAG_STATIC, NULL },
 
 	/* Output Data */
 	{ "output.voltage", 0, 0, "UPS.Output.Voltage", NULL, "%.0f", 0, NULL },
@@ -142,8 +142,8 @@ static hid_info_t legrand_hid2nut[] = {
 	{ "output.frequency", 0, 0, "UPS.Output.Frequency", NULL, "%.0f", 0, NULL },
 	{ "ups.load", 0, 0, "UPS.Output.PercentLoad", NULL, "%.0f", 0, NULL },
 	{ "ups.load", 0, 0, "UPS.OutletSystem.Outlet.PercentLoad", NULL, "%.0f", 0, NULL },
-	{ "ups.realpower", 0, 0, "UPS.Output.ConfigActivePower", NULL, "%.0f", 0, NULL },
-	{ "ups.realpower", 0, 0, "UPS.Flow.ConfigApparentPower", NULL, "%.0f", 0, NULL },
+	{ "ups.realpower.nominal", 0, 0, "UPS.Output.ConfigActivePower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "ups.realpower.nominal", 0, 0, "UPS.Flow.ConfigApparentPower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
 
 	/* UPS Status */
 	{ "BOOL", 0, 0, "UPS.PowerSummary.PresentStatus.ACPresent", NULL, NULL, HU_FLAG_QUICK_POLL, online_info },
@@ -157,10 +157,10 @@ static hid_info_t legrand_hid2nut[] = {
 	{ "ups.delay.start", ST_FLAG_RW | ST_FLAG_STRING, 10, "UPS.OutletSystem.Outlet.DelayBeforeStartup", NULL, DEFAULT_ONDELAY, HU_FLAG_ABSENT, NULL },
 	{ "ups.delay.shutdown", ST_FLAG_RW | ST_FLAG_STRING, 10, "UPS.Output.DelayBeforeShutdown", NULL, DEFAULT_OFFDELAY, HU_FLAG_ABSENT, NULL },
 	{ "ups.delay.start", ST_FLAG_RW | ST_FLAG_STRING, 10, "UPS.Output.DelayBeforeStartup", NULL, DEFAULT_ONDELAY, HU_FLAG_ABSENT, NULL },
-	{ "load.off.delay", 0, 0, "UPS.OutletSystem.Outlet.DelayBeforeShutdown", NULL, "0", HU_TYPE_CMD, NULL },
-	{ "load.on.delay", 0, 0, "UPS.OutletSystem.Outlet.DelayBeforeStartup", NULL, "1", HU_TYPE_CMD, NULL },
-	{ "load.off.delay", 0, 0, "UPS.Output.DelayBeforeShutdown", NULL, "0", HU_TYPE_CMD, NULL },
-	{ "load.on.delay", 0, 0, "UPS.Output.DelayBeforeStartup", NULL, "0", HU_TYPE_CMD, NULL },
+	{ "load.off.delay", 0, 0, "UPS.OutletSystem.Outlet.DelayBeforeShutdown", NULL, DEFAULT_OFFDELAY, HU_TYPE_CMD, NULL },
+	{ "load.on.delay", 0, 0, "UPS.OutletSystem.Outlet.DelayBeforeStartup", NULL, DEFAULT_ONDELAY, HU_TYPE_CMD, NULL },
+	{ "load.off.delay", 0, 0, "UPS.Output.DelayBeforeShutdown", NULL, DEFAULT_OFFDELAY, HU_TYPE_CMD, NULL },
+	{ "load.on.delay", 0, 0, "UPS.Output.DelayBeforeStartup", NULL, DEFAULT_ONDELAY, HU_TYPE_CMD, NULL },
 
 	/* Battery Testing */
 	{ "test.battery.start.quick", 0, 0, "UPS.BatterySystem.Battery.Test", NULL, "1", HU_TYPE_CMD, NULL },
