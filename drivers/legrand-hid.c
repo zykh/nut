@@ -142,8 +142,8 @@ static hid_info_t legrand_hid2nut[] = {
 	{ "output.frequency", 0, 0, "UPS.Output.Frequency", NULL, "%.0f", 0, NULL },
 	{ "ups.load", 0, 0, "UPS.Output.PercentLoad", NULL, "%.0f", 0, NULL },
 	{ "ups.load", 0, 0, "UPS.OutletSystem.Outlet.PercentLoad", NULL, "%.0f", 0, NULL },
-	{ "ups.realpower", 0, 0, "UPS.Output.ConfigActivePower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
-	{ "ups.realpower", 0, 0, "UPS.Flow.ConfigApparentPower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "ups.realpower.nominal", 0, 0, "UPS.Output.ConfigActivePower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
+	{ "ups.realpower.nominal", 0, 0, "UPS.Flow.ConfigApparentPower", NULL, "%.0f", HU_FLAG_STATIC, NULL },
 
 	/* UPS Status */
 	{ "BOOL", 0, 0, "UPS.PowerSummary.PresentStatus.ACPresent", NULL, NULL, HU_FLAG_QUICK_POLL, online_info },
