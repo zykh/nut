@@ -513,6 +513,8 @@
 
 "LDLC"	"ups"	"2"	"UPS-1200D"	""	"blazer_usb langid_fix=0x4095"
 
+"Legrand" "ups" "2" "Keor SPX"  "USB" "nutdrv_qx"
+"Legrand"	"ups"	"2"	"Keor Multiplug"	"USB"	"nutdrv_qx"
 "Legrand"	"ups"	"2"	"Daker DK / DK Plus"	"Serial"	"nutdrv_qx"        
 "Legrand"	"ups"	"2"	"Daker DK / DK Plus"	"USB"	"nutdrv_qx"         
 "Legrand"	"ups"	"2"	"Niky / Niky S"	"Serial"	"nutdrv_qx"       
