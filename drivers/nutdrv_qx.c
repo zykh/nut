@@ -33,7 +33,7 @@
  *
  */
 
-#define DRIVER_VERSION	"0.28"
+#define DRIVER_VERSION	"0.29"
 
 #include "main.h"
 
@@ -1007,6 +1007,68 @@ static int	fuji_command(const char *cmd, char *buf, size_t buflen)
 	return (int)strlen(buf);
 }
 
+/* Richcomm communication subdriver */
+static int	richcomm_command(const char *cmd, char *buf, size_t buflen)
+{
+	char	msg[SMALLBUF];
+	int	ret;
+	size_t  cmdlen, i;
+
+	/* Send command */
+	cmdlen = strlen(cmd);
+
+	for (i = 0; i < cmdlen; i += ret) {
+
+		char	chunk[4];
+		size_t	chunkdatalen;
+
+		memset(chunk, 0, sizeof(chunk));
+
+		chunkdatalen = (cmdlen - i) < 3 ? (cmdlen - i) : 3;
+
+		chunk[0] = 0xA0 | chunkdatalen;
+		memcpy(&chunk[1], &cmd[i], chunkdatalen);
+
+		/* Write data in 4-byte chunks */
+		ret = usb_control_msg(udev, USB_ENDPOINT_OUT | USB_TYPE_CLASS | USB_RECIP_INTERFACE, 0x09, 0x200, 0, chunk, sizeof(chunk), 1000);
+
+		if (ret <= 0) {
+			upsdebugx(3, "send: %s (%d)", ret ? usb_strerror() : "timeout", ret);
+			return ret;
+		}
+
+		snprintf(msg, sizeof(msg), "send [% 3d]", (int)i);
+		upsdebug_hex(5, msg, chunk, ret);
+
+		ret--;
+
+	}
+
+	upsdebugx(3, "send: %.*s", (int)strcspn(cmd, "\r"), cmd);
+
+	/* Read reply */
+	memset(buf, 0, buflen);
+
+	for (i = 0; (i <= buflen - 6) && (memchr(buf, '\r', buflen) == NULL); i += ret) {
+
+		/* Read data in 6-byte chunks */
+		ret = usb_interrupt_read(udev, USB_ENDPOINT_IN | 1, &buf[i], 6, 1000);
+
+		/* Any errors here mean that we are unable to read a reply (which will happen after successfully writing a command to the UPS) */
+		if (ret <= 0) {
+			upsdebugx(3, "read: %s (%d)", ret ? usb_strerror() : "timeout", ret);
+			return ret;
+		}
+
+		snprintf(msg, sizeof(msg), "read [% 3d]", (int)i);
+		upsdebug_hex(5, msg, &buf[i], ret);
+
+	}
+
+	upsdebugx(3, "read: %.*s", (int)strcspn(buf, "\r"), buf);
+	return i;
+}
+
 static void	*cypress_subdriver(USBDevice_t *device)
 {
 	subdriver_command = &cypress_command;
@@ -1049,6 +1111,12 @@ static void	*fuji_subdriver(USBDevice_t *device)
 	return NULL;
 }
 
+static void	*richcomm_subdriver(USBDevice_t *device)
+{
+	subdriver_command = &richcomm_command;
+	return NULL;
+}
+
 /* USB device match structure */
 typedef struct {
 	const int	vendorID;		/* USB device's VendorID */
@@ -1072,6 +1140,7 @@ static qx_usb_device_id_t	qx_usb_id[] = {
 	{ USB_DEVICE(0x0f03, 0x0001),	NULL,		NULL,			&cypress_subdriver },	/* Unitek Alpha 1200Sx */
 	{ USB_DEVICE(0x14f0, 0x00c9),	NULL,		NULL,			&phoenix_subdriver },	/* GE EP series */
 	{ USB_DEVICE(0x0483, 0x0035),	NULL,		NULL,			&sgs_subdriver },	/* TS Shara UPSes */
+	{ USB_DEVICE(0x0925, 0x1234),	NULL,		NULL,			&richcomm_subdriver },	/* Various devices using Richcomm serial/USB adapters */
 	{ USB_DEVICE(0x0001, 0x0000),	"MEC",		"MEC0003",		&fabula_subdriver },	/* Fideltronik/MEC LUPUS 500 USB */
 	{ USB_DEVICE(0x0001, 0x0000),	"ATCL FOR UPS",	"ATCL FOR UPS",		&fuji_subdriver },	/* Fuji UPSes */
 	{ USB_DEVICE(0x0001, 0x0000),	NULL,		NULL,			&krauler_subdriver },	/* Krauler UP-M500VA */
@@ -1925,6 +1994,7 @@ void	upsdrv_initups(void)
 			{ "fabula", &fabula_command },
 			{ "fuji", &fuji_command },
 			{ "sgs", &sgs_command },
+			{ "richcomm", &richcomm_command },
 			{ NULL }
 		};
 
