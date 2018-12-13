@@ -27,7 +27,7 @@
 
 /* driver version */
 #define DRIVER_NAME	"Richcomm dry-contact to USB driver"
-#define DRIVER_VERSION	"0.04"
+#define DRIVER_VERSION	"0.05"
 
 /* driver description structure */
 upsdrv_info_t upsdrv_info = {
@@ -116,6 +116,39 @@ static int query_ups(char *reply)
 	char	query[QUERY_PACKETSIZE] = { 0x01, 0x00, 0x00, 0x30 };
 
 	return execute_and_retrieve_query(query, reply);
+}
+
+/* Test 'commands' 1-17 */
+static void	test_commands(void)
+{
+	unsigned char	command;
+
+	for (command = 1; command <= 17; command++) {
+
+		char	query[QUERY_PACKETSIZE],
+			reply[REPLY_PACKETSIZE];
+		size_t	try;
+
+		/* Avoid shutdowns, for now:
+		 * -  2: shutdown in the dry-contact protocol, data in the other one,
+		 * - 17: shutdown in the full-fledged protocol. */
+		if (command == 2 || command == 17)
+			continue;
+
+		memset(query, 0, sizeof(query));
+		memset(reply, 0, sizeof(reply));
+
+		query[0] = command;
+
+		/* Try a few times, if the reply is not valid... */
+		for (try = 1; try <= 5; try++) {
+			int	ret;
+			sleep(1);
+			ret = execute_and_retrieve_query(query, reply);
+			if (ret == sizeof(reply) && reply[0] == command)
+				break;
+		}
+	}
 }
 
 static void usb_comm_fail(const char *fmt, ...)
@@ -416,6 +449,8 @@ void upsdrv_updateinfo(void)
 			return;
 		}
 	}
+
+	test_commands();
 
 	ret = query_ups(reply);
 
